@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import './App.css'
 import { MantineProvider, createTheme, Title, Box, Tabs, Divider, Paper, Container, Table } from '@mantine/core';
-import {InfiniteCanvas, CanvasBox, CanvasLine} from './components/infinite-canvas';
-import { RenderedTable } from './components/table-from-dict';
+import { ApiClient, get_json_schema } from './connectors/api';
+const UserClient = ApiClient('User');
+import ObjectsPage from './pages/ObjectsPage'
+import SchemaPage from './pages/SchemaPage'
+
 
 const theme = createTheme({
   primaryColor: 'autodla-blue',
@@ -15,50 +18,15 @@ const theme = createTheme({
   },
 });
 
-function SchemaPage() {
-  return (
-    <InfiniteCanvas>
-      <CanvasBox>Adios</CanvasBox>
-      <CanvasLine x1={50} y1={50} x2={300} y2={0} />
-      <CanvasBox x={200}>
-        <RenderedTable data={[{"field": "name", "type": "str"}]}/>
-      </CanvasBox>
-    </InfiniteCanvas>
-  )
-}
-
-function ObjectDashboard(props) {
-  return (
-    <Container>
-      <Title order={3} mt={'md'}>{props.obj}</Title>
-    </Container>
-  )
-}
-
-function ObjectsPage() {
-  const [schema, setSchema] = useState({'user': 2, 'group' : 2})
-
-  return (
-    <Tabs orientation="vertical" ml={'lg'}>
-      <Tabs.List>
-        {
-          Object.keys(schema).map((k) => 
-            <Tabs.Tab value={k}>{k}</Tabs.Tab>
-          )
-        }
-      </Tabs.List>
-      {
-        Object.keys(schema).map((k) => 
-          <Tabs.Panel value={k}>
-            <ObjectDashboard obj={k} />
-          </Tabs.Panel>
-        )
-      }
-    </Tabs>
-  )
-}
-
 function App() {
+  const [schema, setSchema] = useState({})
+  const updateFunc = async () => {
+    const res = await get_json_schema();
+    setSchema(res)
+  }
+  useEffect(() => {
+    updateFunc();
+  }, []);
   return (
     <MantineProvider theme={theme}>
       <Box p='lg'>
@@ -72,10 +40,10 @@ function App() {
         </Tabs.List>
 
         <Tabs.Panel value="schema">
-          <SchemaPage />
+          <SchemaPage schema={schema}/>
         </Tabs.Panel>
         <Tabs.Panel value="objects">
-          <ObjectsPage />
+          <ObjectsPage schema={schema}/>
         </Tabs.Panel>
       </Tabs>
     </MantineProvider>
