@@ -1,5 +1,5 @@
 import { Box } from "@mantine/core";
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { ReactInfiniteCanvas } from "react-infinite-canvas";
 
 function InfiniteCanvas (props) {
@@ -49,6 +49,8 @@ function CanvasLine({ x1, y1, x2, y2, color = 'black', width = 2 }) {
         stroke={color}
         strokeWidth={width}
       />
+      <circle r="3" cx={x1 - left} cy={y1 - top} fill={color}/>
+      <circle r="3" cx={x2 - left} cy={y2 - top} fill={color}/>
     </svg>
   );
 }
