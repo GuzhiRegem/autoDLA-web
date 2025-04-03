@@ -7,6 +7,8 @@ const http = {
     },
     
     post: async (endpoint, data) => {
+        const body = JSON.stringify(data)
+        console.log("POST", endpoint, body)
         const response = await fetch(`${apiUrl}${endpoint}`, {
             method: 'POST',
             headers: {
@@ -14,6 +16,14 @@ const http = {
             },
             body: JSON.stringify(data)
         });
+        if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        const error = new Error(`HTTP error ${response.status}: ${response.statusText}`);
+        error.status = response.status;
+        error.headers = Object.fromEntries(response.headers.entries());
+        error.data = errorData;
+        throw error;
+    }
         return await response.json();
     },
     

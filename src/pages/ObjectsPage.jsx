@@ -63,10 +63,16 @@ const ObjectSelect = (props) => {
     </Container>
   )
 }
-const ObjectCreate = (props) => {
+const ObjectEdit = (props) => {
   const schema = props.schema[props.obj];
-  const [selectedNode, setSelectedNode] = useState(undefined);
-  const [currentData, setCurrentData] = useState({})
+  const primary_key_field = Object.keys(schema).filter((k) => schema[k].type == 'primary_key')[0]
+  let defaultObj = {}
+  Object.keys(schema).filter((k) => schema[k].nullable).map((k) => defaultObj[k] = null)
+  defaultObj = { ...defaultObj, ...props.data }
+  const [selectedNode, setSelectedNode] = useState({});
+  const [error, setError] = useState({})
+  const [currentData, setCurrentData] = useState(defaultObj)
+  const [loading, setLoading] = useState(false)
   const changeKey = (key) => {
     const func = (prev_key) => {
       if (prev_key) {
@@ -76,14 +82,67 @@ const ObjectCreate = (props) => {
     }
     setSelectedNode(func);
   }
-  const changeValue = (key, value) => {
+  const changeValue = (key, value, func_i) => {
     const func = (prev_dict) => {
       return ({...prev_dict, [key]: value(prev_dict[key])})
     }
-    setCurrentData(func);
+    func_i(func);
   }
-  const primary_key_field = Object.keys(schema).filter((k) => schema[k].type == 'primary_key')[0]
   const client = ApiClient(props.obj);
+  let sending = false
+  const sendData = () => {
+    const a_f = async (val) => {
+      if (sending) {
+        return
+      }
+      sending = true
+      await setLoading(true);
+      try {
+        const new_val = {}
+        Object.keys(val).map((k) => {
+          const s = schema[k]
+          if (['int', 'float'].includes(s.type)) {
+            new_val[k] = JSON.parse(val[k])
+          } else {
+            if (s.is_list) {
+              try {
+                new_val[k] = JSON.parse(val[k])
+              } catch (e1) {
+                new_val[k] = val[k]
+              }
+            } else {
+              new_val[k] = val[k]
+            }
+          }
+        })
+        console.log(new_val)
+        await client.edit(props.data[primary_key_field], new_val);
+        props.onUpdate();
+        props.removeChildFunc();
+      } catch (e) {
+        if (e.data) {
+          if (e.data.detail) {
+            setError({})
+            e.data.detail.map((e_k) => {
+              changeValue(e_k.loc[1], x => e_k.msg, setError)
+            })
+          } else {
+            console.log(e)
+          }
+        } else {
+          console.log(e)
+        }
+      } finally {
+        sending = false
+        setLoading(false);
+      }
+    }
+    const f = (val) => {
+      a_f(val);
+      return val
+    }
+    setCurrentData(f)
+  }
 
   const openNode = (objType, onRowSelect) => {
     const key = crypto.randomUUID()
@@ -93,21 +152,22 @@ const ObjectCreate = (props) => {
 
   return (
     <Container fluid px='0'>
-      <SectionTitle onClose={() => props.removeChildFunc()} mt='lg'>Create {props.obj}</SectionTitle>
+      <SectionTitle onClose={() => props.removeChildFunc()} mt='lg'>Edit {props.obj}</SectionTitle>
       <Container fluid>
         {
           Object.keys(schema).map((k) => <Box mt='md'>
             <Input.Wrapper
-              label={<Group><Text fw='bold'>{k}</Text><Text c='yellow'>{'< '}{(schema[k].is_list) ? `list[${schema[k].type}]` : schema[k].type}{' >'}</Text></Group>}
+              label={<Group><Text fw='bold'>{k}</Text><Text c='yellow'>{'< '}{(schema[k].is_list) ? `list[${schema[k].type}]` : schema[k].type}{' >'}</Text>{(schema[k].nullable) && <Text c='red'>{'< nullable >'}</Text>}</Group>}
+              error={error[k]}
             >
               {
                 (schema[k].primary_key) ? (
-                  <Input placeholder={'auto generated'} disabled={true}/>
+                  <Input placeholder={'auto generated'} disabled={true} value={props.data[primary_key_field]}/>
                 ):
                 (schema[k].depends) ? (
                   (schema[k].is_list) ? (
-                    <Paper withBorder p='sm'
-                      onClick={() => openNode(schema[k].depends.slice(5), (val) => changeValue(k, (x) => [...(x || []), val]))}
+                    <Paper withBorder p='sm' style={(error[k]) ? {borderColor: 'red'} : {}}
+                      onClick={() => openNode(schema[k].depends.slice(5), (val) => changeValue(k, (x) => [...(x || []), val], setCurrentData))}
                     >
                       {(currentData[k]) ? (
                       <List spacing="sm">{currentData[k].map((x) =>
@@ -126,8 +186,8 @@ const ObjectCreate = (props) => {
                       </List>) : <div/>}
                     </Paper>
                   ):
-                    <Paper withBorder p='sm'
-                      onClick={() => openNode(schema[k].depends.slice(5), (val) => changeValue(k, (x) => val))}
+                    <Paper withBorder p='sm' style={(error[k]) ? {borderColor: 'red'} : {}}
+                      onClick={() => openNode(schema[k].depends.slice(5), (val) => changeValue(k, (x) => val, setCurrentData))}
                     >
                       {(currentData[k]) ? (
                         <Paper withBorder p='sm'>
@@ -140,12 +200,159 @@ const ObjectCreate = (props) => {
                       ) : <div/>}
                     </Paper>
                 ):
-                <Input placeholder={k}/>
+                <Input placeholder={k} onChange={(event) => changeValue(k, (x) => event.target.value, setCurrentData)} error={error[k]} value={currentData[k]}/>
               }
             </Input.Wrapper>
           </Box>)
         }
-        <Button fullWidth mt='lg'>Create</Button>
+        <Button fullWidth mt='lg' onClick={() => {if (!loading) {sendData();}}} disabled={loading}>Update</Button>
+      </Container>
+    </Container>
+  )
+}
+const ObjectCreate = (props) => {
+  const schema = props.schema[props.obj];
+  const primary_key_field = Object.keys(schema).filter((k) => schema[k].type == 'primary_key')[0]
+  const defaultObj = {
+    [primary_key_field]: 'id'
+  }
+  Object.keys(schema).filter((k) => schema[k].nullable).map((k) => defaultObj[k] = null)
+  const [selectedNode, setSelectedNode] = useState({});
+  const [error, setError] = useState({})
+  const [currentData, setCurrentData] = useState(defaultObj)
+  const [loading, setLoading] = useState(false)
+  const changeKey = (key) => {
+    const func = (prev_key) => {
+      if (prev_key) {
+        props.removeChildFunc(prev_key)
+      }
+      return (key)
+    }
+    setSelectedNode(func);
+  }
+  const changeValue = (key, value, func_i) => {
+    const func = (prev_dict) => {
+      return ({...prev_dict, [key]: value(prev_dict[key])})
+    }
+    func_i(func);
+  }
+  const client = ApiClient(props.obj);
+  let sending = false
+  const sendData = () => {
+    const a_f = async (val) => {
+      if (sending) {
+        return
+      }
+      sending = true
+      await setLoading(true);
+      try {
+        const new_val = {}
+        Object.keys(val).map((k) => {
+          const s = schema[k]
+          if (['int', 'float'].includes(s.type)) {
+            new_val[k] = JSON.parse(val[k])
+          } else {
+            if (s.is_list) {
+              try {
+                new_val[k] = JSON.parse(val[k])
+              } catch (e1) {
+                new_val[k] = val[k]
+              }
+            } else {
+              new_val[k] = val[k]
+            }
+          }
+        })
+        await client.create(new_val);
+        props.onUpdate();
+        props.removeChildFunc();
+      } catch (e) {
+        if (e.data) {
+          if (e.data.detail) {
+            setError({})
+            e.data.detail.map((e_k) => {
+              changeValue(e_k.loc[1], x => e_k.msg, setError)
+            })
+          } else {
+            console.log(e)
+          }
+        } else {
+          console.log(e)
+        }
+      } finally {
+        sending = false
+        setLoading(false);
+      }
+    }
+    const f = (val) => {
+      a_f(val);
+      return val
+    }
+    setCurrentData(f)
+  }
+
+  const openNode = (objType, onRowSelect) => {
+    const key = crypto.randomUUID()
+    props.addChildFunc({ele: ObjectSelect, props: {obj: objType, schema: props.schema, onSelect: onRowSelect}}, key);
+    changeKey(key)
+  }
+
+  return (
+    <Container fluid px='0'>
+      <SectionTitle onClose={() => props.removeChildFunc()} mt='lg'>Create {props.obj}</SectionTitle>
+      <Container fluid>
+        {
+          Object.keys(schema).map((k) => <Box mt='md'>
+            <Input.Wrapper
+              label={<Group><Text fw='bold'>{k}</Text><Text c='yellow'>{'< '}{(schema[k].is_list) ? `list[${schema[k].type}]` : schema[k].type}{' >'}</Text>{(schema[k].nullable) && <Text c='red'>{'< nullable >'}</Text>}</Group>}
+              error={error[k]}
+            >
+              {
+                (schema[k].primary_key) ? (
+                  <Input placeholder={'auto generated'} disabled={true}/>
+                ):
+                (schema[k].depends) ? (
+                  (schema[k].is_list) ? (
+                    <Paper withBorder p='sm' style={(error[k]) ? {borderColor: 'red'} : {}}
+                      onClick={() => openNode(schema[k].depends.slice(5), (val) => changeValue(k, (x) => [...(x || []), val], setCurrentData))}
+                    >
+                      {(currentData[k]) ? (
+                      <List spacing="sm">{currentData[k].map((x) =>
+                        <List.Item>
+                          <Paper withBorder p='sm'>
+                            <Group>
+                              <List listStyleType="disc">
+                                {
+                                  Object.keys(x).map((v_k) => <List.Item><strong>{v_k}</strong>: {JSON.stringify(x[v_k])}</List.Item>)
+                                }
+                              </List>
+                              <CloseButton/>
+                            </Group>
+                          </Paper>
+                        </List.Item>)}
+                      </List>) : <div/>}
+                    </Paper>
+                  ):
+                    <Paper withBorder p='sm' style={(error[k]) ? {borderColor: 'red'} : {}}
+                      onClick={() => openNode(schema[k].depends.slice(5), (val) => changeValue(k, (x) => val, setCurrentData))}
+                    >
+                      {(currentData[k]) ? (
+                        <Paper withBorder p='sm'>
+                          <List listStyleType="disc">
+                            {
+                              Object.keys(currentData[k]).map((v_k) => <List.Item><strong>{v_k}</strong>: {JSON.stringify(currentData[k][v_k])}</List.Item>)
+                            }
+                          </List>
+                        </Paper>
+                      ) : <div/>}
+                    </Paper>
+                ):
+                <Input placeholder={k} onChange={(event) => changeValue(k, (x) => event.target.value, setCurrentData)} error={error[k]}/>
+              }
+            </Input.Wrapper>
+          </Box>)
+        }
+        <Button fullWidth mt='lg' onClick={() => {if (!loading) {sendData();}}} disabled={loading}>Create</Button>
       </Container>
     </Container>
   )
@@ -173,6 +380,9 @@ const ObjectDetails = (props) => {
       const res = await client.get_by_id(props.data[primary_key_field])
       if (res === undefined) {
         props.removeChildFunc()
+      }
+      if (props.onUpdate) {
+        props.onUpdate()
       }
       setData(res);
     }
@@ -203,9 +413,9 @@ const ObjectDetails = (props) => {
     setData(f)
   }
 
-  const openNode = (objType, objData) => {
+  const openNode = (objType, objData, objectEle) => {
     const key = crypto.randomUUID()
-    props.addChildFunc({ele: ObjectDetails, props: {obj: objType, data: objData, schema: props.schema, onUpdate: updateData}}, key);
+    props.addChildFunc({ele: objectEle, props: {obj: objType, data: objData, schema: props.schema, onUpdate: updateData}}, key);
     changeKey(key)
   }
   
@@ -229,7 +439,7 @@ const ObjectDetails = (props) => {
     }
     const itemTransform = (v) => {
       if (depends) {
-        return <Paper withBorder p='sm' onClick={() => openNode(depends, v)}>
+        return <Paper withBorder p='sm' onClick={() => openNode(depends, v, ObjectDetails)}>
           <List listStyleType="disc">
             {
               Object.keys(v).map((v_k) => <List.Item><strong>{v_k}</strong>: {JSON.stringify(v[v_k])}</List.Item>)
@@ -255,7 +465,7 @@ const ObjectDetails = (props) => {
         (dataObj) && <>
           <Container fluid>
             <Group my='lg' justify="flex-end">
-              <Button><IconEdit /></Button>
+              <Button onClick={() => openNode(props.obj, dataObj, ObjectEdit)}><IconEdit /></Button>
               <Button color='red' onClick={deleteModalHandler.open}><IconTrash /></Button>
             </Group>
           </Container>
@@ -265,6 +475,7 @@ const ObjectDetails = (props) => {
                 <Group>
                   <Text fw='bold'>{k}</Text>
                   <Text c='yellow'>{'< '}{(props.schema[props.obj][k].is_list) ? `list[${props.schema[props.obj][k].type}]` : props.schema[props.obj][k].type}{' >'}</Text>
+                  {(props.schema[props.obj][k].nullable) && <Text c='red'>{'< nullable >'}</Text>}
                 </Group>
                 <Paper shadow='xs' withBorder p='sm' bg='neutral-gray.1'>{processData(dataObj, k)}</Paper>
               </Box>)
