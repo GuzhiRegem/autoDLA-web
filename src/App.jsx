@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import './App.css'
-import { MantineProvider, createTheme, Title, Box, Tabs, Divider, Paper, Container, Table } from '@mantine/core';
-import { ApiClient, get_json_schema } from './connectors/api';
+import { MantineProvider, createTheme, Title, Box, Tabs, Divider, Paper, Container, Table, Modal } from '@mantine/core';
+import { ApiClient, get_json_schema, cookies } from './connectors/api';
 const UserClient = ApiClient('User');
 import ObjectsPage from './pages/ObjectsPage'
 import SchemaPage from './pages/SchemaPage'
+import { LoginForm } from './components/login-form';
 
 
 const theme = createTheme({
@@ -20,32 +21,51 @@ const theme = createTheme({
 
 function App() {
   const [schema, setSchema] = useState({})
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const updateFunc = async () => {
     const res = await get_json_schema();
     setSchema(res)
+    setIsAuthenticated(true)
+  }
+  const checkAuth = async () => {
+    try {
+      updateFunc()
+    } catch (e) {
+      if (e) {
+        setIsAuthenticated(false)
+      }
+    }
   }
   useEffect(() => {
-    updateFunc();
+    checkAuth();
   }, []);
   return (
     <MantineProvider theme={theme}>
-      <Box p='lg'>
-        <Title color='primary' fw='normal'><strong>AUTODLA</strong> - WEB</Title>
-      </Box>
-      <Divider/>
-      <Tabs defaultValue="schema" orientation="vertical" style={{height: '100%'}}>
-        <Tabs.List>
-          <Tabs.Tab value="schema">Schema</Tabs.Tab>
-          <Tabs.Tab value="objects">Objects</Tabs.Tab>
-        </Tabs.List>
+      {
+        (isAuthenticated) ? (
+          <>
+            <Box p='lg'>
+              <Title color='primary' fw='normal'><strong>AUTODLA</strong> - WEB</Title>
+            </Box>
+            <Divider/>
+            <Tabs defaultValue="schema" orientation="vertical" style={{height: '100%'}}>
+              <Tabs.List>
+                <Tabs.Tab value="schema">Schema</Tabs.Tab>
+                <Tabs.Tab value="objects">Objects</Tabs.Tab>
+              </Tabs.List>
 
-        <Tabs.Panel value="schema">
-          <SchemaPage schema={schema}/>
-        </Tabs.Panel>
-        <Tabs.Panel value="objects">
-          <ObjectsPage schema={schema}/>
-        </Tabs.Panel>
-      </Tabs>
+              <Tabs.Panel value="schema">
+                <SchemaPage schema={schema}/>
+              </Tabs.Panel>
+              <Tabs.Panel value="objects">
+                <ObjectsPage schema={schema}/>
+              </Tabs.Panel>
+            </Tabs>
+          </>
+        ) : (
+          <LoginForm onSuccess={() => checkAuth()}/>
+        )
+      }
     </MantineProvider>
   )
 }
