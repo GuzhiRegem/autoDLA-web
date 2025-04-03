@@ -5,7 +5,7 @@ import { ReactInfiniteCanvas } from "react-infinite-canvas";
 function InfiniteCanvas (props) {
   const canvasRef = useRef();
   return (
-    <Box h='700'>
+    <Box style={{height: '100%'}}>
       <ReactInfiniteCanvas
         ref={canvasRef}
         onCanvasMount={(mountFunc) => {

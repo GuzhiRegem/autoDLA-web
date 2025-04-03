@@ -44,7 +44,7 @@ const ApiClient = (object_name) => {
         get_tables: async () => await http.get(`/${object_name}/table`),
         create: async (data) => await http.post(`/${object_name}/new`, data),
         edit: async (id_param, data) => await http.put(`/${object_name}/edit/${id_param}`, data),
-        delete: async (id_param) => await http.delete(`/${object_name}/get/${id_param}`)
+        delete: async (id_param) => await http.delete(`/${object_name}/delete/${id_param}`)
     })
 }
 const get_json_schema = async () => await http.get(`/get_json_schema`)

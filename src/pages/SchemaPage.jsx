@@ -55,7 +55,7 @@ function SchemaPage(props) {
       const def_val = schema[key][def_key];
       const proc_val = {
         field_name: def_key,
-        field_type: def_val.type,
+        field_type: (def_val.is_list) ? `list[${def_val.type}]` : def_val.type,
         refears_to: (def_val.depends) ? def_val.depends.slice('$ref:'.length) : undefined
       }
       if (proc_val.refears_to) {

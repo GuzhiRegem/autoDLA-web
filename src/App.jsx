@@ -33,7 +33,7 @@ function App() {
         <Title color='primary' fw='normal'><strong>AUTODLA</strong> - WEB</Title>
       </Box>
       <Divider/>
-      <Tabs defaultValue="schema" orientation="vertical">
+      <Tabs defaultValue="schema" orientation="vertical" style={{height: '100%'}}>
         <Tabs.List>
           <Tabs.Tab value="schema">Schema</Tabs.Tab>
           <Tabs.Tab value="objects">Objects</Tabs.Tab>
