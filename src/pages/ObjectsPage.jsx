@@ -27,9 +27,10 @@ const ObjectSelect = (props) => {
   const defaultObj = {}
   Object.keys(props.schema[props.obj]).map((k) => defaultObj[k] = '---')
   const [data, setData] = useState([defaultObj])
+  const [page, setPage] = useState(0);
   const client = ApiClient(props.obj)
-  const updateData = async () => {
-    const res = await client.get_all()
+  const updateData = async (pageArg = 0) => {
+    const res = await client.get_all(10, pageArg*10)
     let out = []
     res.map((obj) => {
       const res_obj = {}
@@ -54,12 +55,27 @@ const ObjectSelect = (props) => {
     props.removeChildFunc();
   }
   useEffect(() => {
-    updateData();
+    useEffect(() => {
+      if (!isNaN(page)) {
+        updateData(page);
+      } else {
+        setPage(0)
+      }
+    }, [page])
   }, [])
   return (
     <Container fluid px='0'>
       <SectionTitle onReload={updateData} onClose={() => selectObject()} mt='lg'>Select {props.obj}</SectionTitle>
       <RenderedTable data={data} onRowSelect={selectObject}/>
+      <Group>
+        <Button onClick={() => setPage(page - 1)}>
+          {'<'}
+        </Button>
+        <Text>{page}</Text>
+        <Button onClick={() => setPage(page + 1)}>
+          {'>'}
+        </Button>
+      </Group>
     </Container>
   )
 }
@@ -510,6 +526,7 @@ const ObjectDetails = (props) => {
 
 const TableElement = (props) => {
   const [selectedNode, setSelectedNode] = useState(undefined);
+  const [page, setPage] = useState(0);
   const changeKey = (key) => {
     const func = (prev_key) => {
       if (prev_key) {
@@ -528,8 +545,8 @@ const TableElement = (props) => {
   Object.keys(props.schema[props.obj]).map((k) => defaultObj[k] = '---')
   const [data, setData] = useState([defaultObj])
   const client = ApiClient(props.obj)
-  const updateData = async () => {
-    const res = await client.get_all()
+  const updateData = async (toPage = 0) => {
+    const res = await client.get_all(10, toPage * 10)
     let out = []
     res.map((obj) => {
       const res_obj = {}
@@ -548,8 +565,12 @@ const TableElement = (props) => {
     setData(out)
   }
   useEffect(() => {
-    updateData();
-  }, [])
+    if (!isNaN(page)) {
+      updateData(page);
+    } else {
+      setPage(0)
+    }
+  }, [page])
   return (
     <Container fluid px='0'>
       <Group my='lg'>
@@ -558,6 +579,15 @@ const TableElement = (props) => {
       </Group>
       <SectionTitle onReload={updateData}>Objects</SectionTitle>
       <RenderedTable data={data} onRowSelect={(objData) => openNode(objData, ObjectDetails)}/>
+      <Group>
+        <Button onClick={() => setPage(page - 1)}>
+          {'<'}
+        </Button>
+        <Text>{page}</Text>
+        <Button onClick={() => setPage(page + 1)}>
+          {'>'}
+        </Button>
+      </Group>
     </Container>
   )
 }

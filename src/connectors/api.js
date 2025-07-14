@@ -1,5 +1,5 @@
-//const apiUrl = 'http://127.0.0.1:8000';
-const apiUrl = window.location.origin;
+const apiUrl = 'http://127.0.0.1:8000';
+//const apiUrl = window.location.origin;
 import Cookies from 'universal-cookie';
 const cookies = new Cookies(null, { path: '/' });
 
@@ -109,7 +109,7 @@ const http = {
 const prefix = '/autodla-admin/'
 const ApiClient = (object_name) => {
     return ({
-        get_all: async () => await http.get(`${prefix}${object_name}/list`),
+        get_all: async (limit=10, skip=0) => await http.get(`${prefix}${object_name}/list?limit=${limit}&skip=${skip}`),
         get_by_id: async (id_param) => await http.get(`${prefix}${object_name}/get/${id_param}`),
         get_history: async (id_param) => await http.get(`${prefix}${object_name}/get_history/${id_param}`),
         get_tables: async () => await http.get(`${prefix}${object_name}/table`),
