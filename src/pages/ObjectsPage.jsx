@@ -65,7 +65,7 @@ const ObjectSelect = (props) => {
   }, [])
   return (
     <Container fluid px='0'>
-      <SectionTitle onReload={updateData} onClose={() => selectObject()} mt='lg'>Select {props.obj}</SectionTitle>
+      <SectionTitle onReload={() => updateData(page)} onClose={() => selectObject()} mt='lg'>Select {props.obj}</SectionTitle>
       <RenderedTable data={data} onRowSelect={selectObject}/>
       <Group>
         <Button onClick={() => setPage(page - 1)}>
@@ -577,7 +577,7 @@ const TableElement = (props) => {
         <Title>{props.obj}</Title>
         <Button onClick={() => openNode(undefined, ObjectCreate)} ml='auto'>New</Button>
       </Group>
-      <SectionTitle onReload={updateData}>Objects</SectionTitle>
+      <SectionTitle onReload={() => updateData(page)}>Objects</SectionTitle>
       <RenderedTable data={data} onRowSelect={(objData) => openNode(objData, ObjectDetails)}/>
       <Group>
         <Button onClick={() => setPage(page - 1)}>

@@ -1,5 +1,5 @@
-const apiUrl = 'http://127.0.0.1:8000';
-//const apiUrl = window.location.origin;
+//const apiUrl = 'http://127.0.0.1:8000';
+const apiUrl = window.location.origin;
 import Cookies from 'universal-cookie';
 const cookies = new Cookies(null, { path: '/' });
 
